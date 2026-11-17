@@ -52,4 +52,38 @@ describe("GET /customers/:id/daily-totals", () => {
     const res = await dailyTotals(ctx.app, "nobody", "2026-02-10", "2026-02-10");
     expect(res.statusCode).toBe(404);
   });
+
+  it("корректно группирует заказы при переходе на летнее время (DST) в Europe/Berlin", async () => {
+    ctx.api.customers.set("c_7", "Europe/Berlin");
+    // 2026-03-28 22:30:00Z -> Europe/Berlin UTC+1 (CET) -> 2026-03-28 23:30 local -> 2026-03-28
+    await postWebhook(
+      ctx.app,
+      apiOrder({ customerId: "c_7", amount: 100, createdAt: "2026-03-28T22:30:00Z" }),
+    );
+    // 2026-03-29 00:30:00Z -> Europe/Berlin UTC+1 (CET) -> 2026-03-29 01:30 local -> 2026-03-29
+    await postWebhook(
+      ctx.app,
+      apiOrder({ customerId: "c_7", amount: 200, createdAt: "2026-03-29T00:30:00Z" }),
+    );
+    // 2026-03-29 22:30:00Z -> Europe/Berlin UTC+2 (CEST) -> 2026-03-30 00:30 local -> 2026-03-30
+    await postWebhook(
+      ctx.app,
+      apiOrder({ customerId: "c_7", amount: 300, createdAt: "2026-03-29T22:30:00Z" }),
+    );
+    // 2026-03-30 22:30:00Z -> Europe/Berlin UTC+2 (CEST) -> 2026-03-31 00:30 local -> 2026-03-31
+    await postWebhook(
+      ctx.app,
+      apiOrder({ customerId: "c_7", amount: 400, createdAt: "2026-03-30T22:30:00Z" }),
+    );
+
+    const res = await dailyTotals(ctx.app, "c_7", "2026-03-27", "2026-03-31");
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([
+      { date: "2026-03-27", total: 0 },
+      { date: "2026-03-28", total: 100 },
+      { date: "2026-03-29", total: 200 },
+      { date: "2026-03-30", total: 300 },
+      { date: "2026-03-31", total: 400 },
+    ]);
+  });
 });
