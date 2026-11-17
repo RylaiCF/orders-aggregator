@@ -1,8 +1,8 @@
 /**
- * Деньги внутри сервиса — целые копейки. Рубли — только на входе (внешний API) и в ответах.
+ * Money inside the service is stored as integer kopecks. Rubles are only used at the boundary (external API) and in responses.
  */
 
-/** Сумма из внешнего API: число или строка с числом ("250.10"). */
+/** Amount from external API: number or numeric string ("250.10"). */
 export function parseRub(raw: unknown): number {
   const value = typeof raw === "string" ? Number(raw.trim()) : raw;
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
@@ -11,12 +11,12 @@ export function parseRub(raw: unknown): number {
   return value;
 }
 
-/** Рубли → копейки. Доли копейки отбрасываются: деньги клиенту не досчитываем. */
+/** Rubles → kopecks. Fractional kopecks are truncated: never overcredit the customer. */
 export function toKop(rub: number): number {
   return Math.floor(Math.round(rub * 1000) / 10);
 }
 
-/** Копейки → рубли для ответа API. */
+/** Kopecks → rubles for API response. */
 export function fromKop(kop: number): number {
   return kop / 100;
 }

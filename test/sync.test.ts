@@ -4,7 +4,7 @@ import { apiOrder, setupTestApp } from "./helpers.js";
 const ctx = setupTestApp();
 
 describe("POST /sync", () => {
-  it("проходит все страницы и останавливается на пустой странице с тем же курсором", async () => {
+  it("iterates all pages and stops on empty page with the same cursor", async () => {
     const [a, b, c] = [apiOrder(), apiOrder(), apiOrder()];
     ctx.api.pages.set(null, { items: [a, b], nextCursor: "p2" });
     ctx.api.pages.set("p2", { items: [c], nextCursor: "p3" });
@@ -17,13 +17,13 @@ describe("POST /sync", () => {
     expect(rows[0].n).toBe(3);
   });
 
-  it("невалидные заказы пропускает, а не падает", async () => {
+  it("skips invalid orders without crashing", async () => {
     ctx.api.pages.set(null, { items: [apiOrder(), { id: "broken" }, apiOrder({ amount: "abc" })], nextCursor: null });
     const res = await ctx.app.inject({ method: "POST", url: "/sync" });
     expect(res.json()).toMatchObject({ received: 3, applied: 1, invalid: 2 });
   });
 
-  it("пропускает невалидные заказы с некорректными скидками или суммами как invalid", async () => {
+  it("skips invalid orders with incorrect discounts or amounts", async () => {
     const valid = apiOrder({ amount: 1000, discountPercent: 10 });
     const badPctLow = apiOrder({ amount: 1000, discountPercent: -5 });
     const badPctHigh = apiOrder({ amount: 1000, discountPercent: 120 });
@@ -40,7 +40,7 @@ describe("POST /sync", () => {
     expect(res.json()).toMatchObject({ received: 6, applied: 1, invalid: 5 });
   });
 
-  it("не откатывает более свежую версию заказа", async () => {
+  it("does not roll back to an older order version", async () => {
     const fresh = apiOrder({ status: "refunded", updatedAt: "2026-02-12T00:00:00Z" });
     await ctx.app.inject({ method: "POST", url: "/webhooks/order", payload: fresh });
     ctx.api.pages.set(null, { items: [{ ...fresh, status: "paid", updatedAt: "2026-02-10T12:00:00Z" }], nextCursor: null });
@@ -51,7 +51,7 @@ describe("POST /sync", () => {
     expect(rows[0].status).toBe("refunded");
   });
 
-  it("строковые суммы и даты без зоны", async () => {
+  it("handles string amounts and dates without time zone", async () => {
     const o = apiOrder({ amount: "2500.00", createdAt: "2026-02-10T21:30:00" });
     ctx.api.pages.set(null, { items: [o], nextCursor: null });
     await ctx.app.inject({ method: "POST", url: "/sync" });
@@ -60,7 +60,7 @@ describe("POST /sync", () => {
     expect(rows[0].created_at.toISOString()).toBe("2026-02-10T21:30:00.000Z");
   });
 
-  it("синхронизирует заказы со скидками (amountPaid, discountPercent, legacy без скидок)", async () => {
+  it("syncs orders with discounts (amountPaid, discountPercent, legacy without discounts)", async () => {
     const o1 = apiOrder({ amount: 1000, amountPaid: 850 });
     const o2 = apiOrder({ amount: "2000.00", discountPercent: "15" });
     const o3 = apiOrder({ amount: 500 });

@@ -5,7 +5,7 @@ import type { Customer, OrdersApi, OrdersPage } from "../src/clients/orders-api.
 import { createContainer, type Container } from "../src/container.js";
 import { createDb, migrate, type Db } from "../src/db.js";
 
-/** Внешний API в памяти: страницы по курсору и клиенты. */
+/** In-memory external API: cursor-paginated pages and customers. */
 export class FakeApi implements OrdersApi {
   pages = new Map<string | null, OrdersPage>();
   customers = new Map<string, string>();
@@ -32,7 +32,7 @@ export class FakeApi implements OrdersApi {
 
 let seq = 0;
 
-/** Заказ в формате внешнего API. */
+/** Order in external API format. */
 export function apiOrder(over: Partial<Record<string, unknown>> = {}) {
   seq++;
   return {
@@ -53,7 +53,7 @@ export interface TestContext {
   app: FastifyInstance;
 }
 
-/** Приложение на тестовой БД с фейковым внешним API. Перед каждым тестом таблицы очищаются. */
+/** Application on test database with fake external API. Tables are truncated before each test. */
 export function setupTestApp(): TestContext {
   const ctx = { api: new FakeApi() } as TestContext;
 

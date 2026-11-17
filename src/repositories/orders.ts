@@ -53,7 +53,7 @@ export class OrdersRepository {
     );
   }
 
-  /** Оплаченные заказы клиента, созданные в [from, to). */
+  /** Customer's paid orders created in [from, to). */
   async paidCreatedBetween(customerId: string, from: Date, to: Date): Promise<Order[]> {
     const { rows } = await this.db.query<Row>(
       `SELECT * FROM orders

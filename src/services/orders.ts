@@ -4,7 +4,7 @@ import type { Order, OrdersRepository } from "../repositories/orders.js";
 import { parseRub, toKop } from "../utils/money.js";
 import { parseUtc } from "../utils/time.js";
 
-/** Заказ в формате внешнего API (поля, которые нам нужны; остальные игнорируем). */
+/** Order in external API format (fields we need; ignore others). */
 const ExternalOrder = z.object({
   id: z.string().min(1),
   customerId: z.string().min(1),
@@ -69,9 +69,9 @@ export class OrdersService {
   }
 
   /**
-   * Применяет версию заказа (из синка или вебхука).
-   * Вебхуки приходят с повторами и не по порядку, поэтому версию сохраняем,
-   * только если она новее уже сохранённой (по updatedAt).
+   * Applies an order version (from sync or webhook).
+   * Webhooks arrive with duplicates and out of order, so we save a version
+   * only if it is newer than the already stored one (by updatedAt).
    */
   async apply(raw: unknown): Promise<ApplyResult> {
     const incoming = this.normalize(raw);

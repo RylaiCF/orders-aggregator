@@ -10,7 +10,7 @@ export interface Customer {
   timezone: string;
 }
 
-/** То, что сервису нужно от внешнего API. В тестах подменяется фейком. */
+/** What the service needs from the external API. Replaced with a fake in tests. */
 export interface OrdersApi {
   getOrdersPage(cursor: string | null, limit: number): Promise<OrdersPage>;
   getCustomer(id: string): Promise<Customer | null>;
@@ -19,12 +19,12 @@ export interface OrdersApi {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
- * HTTP-клиент внешнего API заказов.
+ * HTTP client for the external orders API.
  *
- * Особенности API (поддерживается другой командой, документация отстаёт):
- * - лимит 5 rps; при превышении — 429, иногда без Retry-After;
- * - иногда превышение приходит как 200 с телом { "error": "rate_limited" }.
- * Все запросы идут последовательно через общий интервал, ретраи — с экспоненциальной паузой.
+ * API peculiarities (maintained by another team, documentation lags behind):
+ * - 5 rps limit; on exceed — 429, sometimes without Retry-After;
+ * - sometimes exceeding comes as 200 with body { "error": "rate_limited" }.
+ * All requests run sequentially with a shared interval, retries use exponential backoff.
  */
 export class HttpOrdersApi implements OrdersApi {
   private nextSlot = 0;
@@ -86,7 +86,7 @@ export class HttpOrdersApi implements OrdersApi {
       if (!res.ok) throw new UpstreamError(`${url.pathname}: HTTP ${res.status}`);
       const body = (await res.json()) as unknown;
       if (body && typeof body === "object" && "error" in body) {
-        // 200 с ошибкой в теле — на практике это тот же rate limit
+        // 200 with error in body — in practice, this is the same rate limit
         this.nextSlot = Date.now() + 1000;
         continue;
       }

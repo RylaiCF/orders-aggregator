@@ -4,8 +4,8 @@ import { apiOrder, dailyTotals, postWebhook, setupTestApp } from "./helpers.js";
 const ctx = setupTestApp();
 
 describe("GET /customers/:id/daily-totals", () => {
-  it("суммирует оплаченные заказы по дням в таймзоне клиента", async () => {
-    // c_1 — Europe/Moscow (UTC+3): 20:30Z ещё 10-е, 21:30Z уже 11-е
+  it("aggregates paid orders by day in customer time zone", async () => {
+    // c_1 — Europe/Moscow (UTC+3): 20:30Z is still the 10th, 21:30Z is already the 11th
     await postWebhook(ctx.app, apiOrder({ amount: 1000, createdAt: "2026-02-10T20:30:00Z" }));
     await postWebhook(ctx.app, apiOrder({ amount: 250, createdAt: "2026-02-10T21:30:00Z" }));
     await postWebhook(ctx.app, apiOrder({ amount: "99", createdAt: "2026-02-11T10:00:00Z" }));
@@ -19,7 +19,7 @@ describe("GET /customers/:id/daily-totals", () => {
     ]);
   });
 
-  it("не учитывает pending и refunded", async () => {
+  it("ignores pending and refunded orders", async () => {
     await postWebhook(ctx.app, apiOrder({ amount: 500, amountPaid: 400 }));
     await postWebhook(ctx.app, apiOrder({ amount: 700, amountPaid: 500, status: "pending" }));
     await postWebhook(ctx.app, apiOrder({ amount: 900, amountPaid: 600, status: "refunded" }));
@@ -27,7 +27,7 @@ describe("GET /customers/:id/daily-totals", () => {
     expect(res.json()).toEqual([{ date: "2026-02-10", total: 500, gross: 500, discount: 100, net: 400 }]);
   });
 
-  it("учитывает только заказы этого клиента", async () => {
+  it("aggregates orders only for the specified customer", async () => {
     ctx.api.customers.set("c_2", "Asia/Novosibirsk");
     await postWebhook(ctx.app, apiOrder({ amount: 500, amountPaid: 450 }));
     await postWebhook(ctx.app, apiOrder({ amount: 800, amountPaid: 700, customerId: "c_2" }));
@@ -35,7 +35,7 @@ describe("GET /customers/:id/daily-totals", () => {
     expect(res.json()).toEqual([{ date: "2026-02-10", total: 800, gross: 800, discount: 100, net: 700 }]);
   });
 
-  it("таймзона клиента берётся из API один раз", async () => {
+  it("fetches customer time zone from API only once", async () => {
     await dailyTotals(ctx.app, "c_1", "2026-02-10", "2026-02-10");
     ctx.api.customers.set("c_1", "UTC");
     await dailyTotals(ctx.app, "c_1", "2026-02-10", "2026-02-10");
@@ -43,17 +43,17 @@ describe("GET /customers/:id/daily-totals", () => {
     expect(rows[0].timezone).toBe("Europe/Moscow");
   });
 
-  it("валидирует даты", async () => {
+  it("validates date parameters", async () => {
     expect((await dailyTotals(ctx.app, "c_1", "2026-02-30", "2026-03-01")).statusCode).toBe(400);
     expect((await dailyTotals(ctx.app, "c_1", "2026-03-02", "2026-03-01")).statusCode).toBe(400);
   });
 
-  it("неизвестный клиент — 404", async () => {
+  it("returns 404 for unknown customer", async () => {
     const res = await dailyTotals(ctx.app, "nobody", "2026-02-10", "2026-02-10");
     expect(res.statusCode).toBe(404);
   });
 
-  it("корректно группирует заказы при переходе на летнее время (DST) в Europe/Berlin", async () => {
+  it("correctly groups orders across DST transition in Europe/Berlin", async () => {
     ctx.api.customers.set("c_7", "Europe/Berlin");
     // 2026-03-28 22:30:00Z -> Europe/Berlin UTC+1 (CET) -> 2026-03-28 23:30 local -> 2026-03-28
     await postWebhook(
@@ -87,11 +87,11 @@ describe("GET /customers/:id/daily-totals", () => {
     ]);
   });
 
-  it("корректно рассчитывает скидки (gross, net, discount) для нескольких заказов", async () => {
-    // 3 оплаченных заказа в один день с разными скидками:
-    // 1) amount: 1000, amountPaid: 800 (скидка 200)
-    // 2) amount: 500, discountPercent: 10 -> amountPaid: 450 (скидка 50)
-    // 3) amount: 250 (без скидки -> amountPaid: 250, скидка 0)
+  it("correctly calculates discounts (gross, net, discount) for multiple orders", async () => {
+    // 3 paid orders on the same day with different discounts:
+    // 1) amount: 1000, amountPaid: 800 (discount 200)
+    // 2) amount: 500, discountPercent: 10 -> amountPaid: 450 (discount 50)
+    // 3) amount: 250 (no discount -> amountPaid: 250, discount 0)
     await postWebhook(
       ctx.app,
       apiOrder({ amount: 1000, amountPaid: 800, createdAt: "2026-02-10T10:00:00Z" }),
@@ -105,14 +105,14 @@ describe("GET /customers/:id/daily-totals", () => {
       apiOrder({ amount: 250, createdAt: "2026-02-10T15:00:00Z" }),
     );
 
-    // Заказ на следующий день с дробными суммами (проверка точности копеек без IEEE-754 артефактов)
+    // Order on the next day with fractional amounts (verify kopeck precision without IEEE-754 artifacts)
     // amount: 4723.90, amountPaid: 4000.50 -> discount: 723.40
     await postWebhook(
       ctx.app,
       apiOrder({ amount: "4723.90", amountPaid: "4000.50", createdAt: "2026-02-11T09:00:00Z" }),
     );
 
-    // Заказы pending/refunded со скидками не должны попадать в подсчет
+    // Pending/refunded orders with discounts must not be included in totals
     await postWebhook(
       ctx.app,
       apiOrder({ amount: 999, amountPaid: 100, status: "pending", createdAt: "2026-02-10T16:00:00Z" }),
@@ -139,10 +139,10 @@ describe("GET /customers/:id/daily-totals", () => {
       { date: "2026-02-12", total: 0, gross: 0, discount: 0, net: 0 },
     ]);
 
-    // Проверяем инварианты на каждом дне:
+    // Verify invariants for each day:
     for (const day of data) {
       expect(day.total).toBe(day.gross);
-      // discount === gross - net с точностью до округления копеек
+      // discount === gross - net up to kopeck rounding
       expect(Math.round((day.gross - day.net) * 100)).toBe(Math.round(day.discount * 100));
     }
   });

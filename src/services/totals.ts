@@ -20,13 +20,13 @@ export class TotalsService {
   ) {}
 
   /**
-   * Сумма оплаченных заказов клиента по дням в его таймзоне, from..to включительно.
-   * Дни без оплат — с нулём.
+   * Sum of customer's paid orders by day in their time zone, from..to inclusive.
+   * Days without payments have zero totals.
    */
   async daily(customerId: string, from: string, to: string): Promise<DailyTotal[]> {
     const timezone = await this.customers.timezone(customerId);
 
-    // Смещения таймзон в пределах ±14 ч: берём с запасом в сутки с каждой стороны
+    // Time zone offsets are within ±14h: query with a ±1 day margin
     const rows = await this.orders.paidCreatedBetween(
       customerId,
       new Date(Date.parse(`${from}T00:00:00Z`) - DAY),

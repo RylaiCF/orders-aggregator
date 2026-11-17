@@ -1,8 +1,8 @@
 const HAS_ZONE = /(Z|[+-]\d{2}:?\d{2})$/i;
 
 /**
- * ISO 8601 → Date. По контракту внешний API отдаёт время в UTC,
- * но иногда без указателя зоны ("2026-03-01T00:40:39") — такие строки тоже считаем UTC.
+ * ISO 8601 → Date. By contract, external API provides time in UTC,
+ * but sometimes without a zone indicator ("2026-03-01T00:40:39") — such strings are also treated as UTC.
  */
 export function parseUtc(raw: unknown): Date {
   if (typeof raw !== "string") throw new Error(`invalid date: ${JSON.stringify(raw)}`);
@@ -12,7 +12,7 @@ export function parseUtc(raw: unknown): Date {
   return d;
 }
 
-/** Смещение таймзоны относительно UTC в минутах в момент `at` (Europe/Moscow → 180). */
+/** Time zone offset relative to UTC in minutes at instant `at` (Europe/Moscow → 180). */
 export function tzOffsetMinutes(timeZone: string, at: Date): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -29,12 +29,12 @@ export function tzOffsetMinutes(timeZone: string, at: Date): number {
   return Math.round((asUtc - Math.floor(at.getTime() / 1000) * 1000) / 60_000);
 }
 
-/** Календарная дата (YYYY-MM-DD) момента `at` при смещении `offsetMinutes`. */
+/** Calendar date (YYYY-MM-DD) of instant `at` given `offsetMinutes`. */
 export function dateAtOffset(at: Date, offsetMinutes: number): string {
   return new Date(at.getTime() + offsetMinutes * 60_000).toISOString().slice(0, 10);
 }
 
-/** Календарная дата (YYYY-MM-DD) момента `at` в таймзоне `timeZone`. */
+/** Calendar date (YYYY-MM-DD) of instant `at` in `timeZone`. */
 export function orderDay(at: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -53,7 +53,7 @@ export function isCalendarDate(s: unknown): s is string {
   return new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s;
 }
 
-/** Все даты от from до to включительно. */
+/** All dates from `from` to `to` inclusive. */
 export function datesBetween(from: string, to: string): string[] {
   const out: string[] = [];
   for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`); t += 86_400_000) {

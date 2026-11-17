@@ -10,7 +10,7 @@ export function createDb(url: string): Db {
 
 const MIGRATIONS_DIR = join(import.meta.dirname, "..", "migrations");
 
-/** Применяет SQL-миграции из migrations/ по порядку имён. Каждая — один раз. */
+/** Applies SQL migrations from migrations/ in alphabetical order. Each is run once. */
 export async function migrate(db: Db): Promise<string[]> {
   await db.query(`CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
   const files = (await readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith(".sql")).sort();

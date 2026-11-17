@@ -4,19 +4,19 @@ import { apiOrder, postWebhook, setupTestApp } from "./helpers.js";
 const ctx = setupTestApp();
 
 describe("POST /webhooks/order", () => {
-  it("создаёт заказ", async () => {
+  it("creates an order", async () => {
     const res = await postWebhook(ctx.app, apiOrder());
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ result: "created" });
   });
 
-  it("повтор того же события ничего не меняет", async () => {
+  it("duplicate event does not change anything", async () => {
     const o = apiOrder();
     await postWebhook(ctx.app, o);
     expect((await postWebhook(ctx.app, o)).json()).toEqual({ result: "stale" });
   });
 
-  it("устаревшее событие после нового игнорируется", async () => {
+  it("obsolete event after newer one is ignored", async () => {
     const o = apiOrder({ status: "paid", updatedAt: "2026-02-10T12:00:00Z" });
     await postWebhook(ctx.app, { ...o, status: "refunded", updatedAt: "2026-02-11T12:00:00Z" });
     expect((await postWebhook(ctx.app, o)).json()).toEqual({ result: "stale" });
@@ -24,19 +24,19 @@ describe("POST /webhooks/order", () => {
     expect(rows[0].status).toBe("refunded");
   });
 
-  it("новое событие обновляет заказ", async () => {
+  it("newer event updates the order", async () => {
     const o = apiOrder({ status: "pending" });
     await postWebhook(ctx.app, o);
     const res = await postWebhook(ctx.app, { ...o, status: "paid", updatedAt: "2026-02-11T00:00:00Z" });
     expect(res.json()).toEqual({ result: "updated" });
   });
 
-  it("невалидное тело — 400", async () => {
+  it("invalid body returns 400", async () => {
     const res = await postWebhook(ctx.app, { id: "x" });
     expect(res.statusCode).toBe(400);
   });
 
-  it("вебхук сохраняет amount_paid_kop при создании и обновляет при более новой версии", async () => {
+  it("webhook saves amount_paid_kop on creation and updates on newer version", async () => {
     const o = apiOrder({ amount: 1000, amountPaid: 900, updatedAt: "2026-02-10T12:00:00Z" });
     const res1 = await postWebhook(ctx.app, o);
     expect(res1.statusCode).toBe(200);
@@ -48,7 +48,7 @@ describe("POST /webhooks/order", () => {
     );
     expect(Number(r1[0].amount_paid_kop)).toBe(90000);
 
-    // Новая версия с дополнительной скидкой
+    // Newer version with additional discount
     const res2 = await postWebhook(ctx.app, {
       ...o,
       amountPaid: 750,
@@ -62,7 +62,7 @@ describe("POST /webhooks/order", () => {
     );
     expect(Number(r2[0].amount_paid_kop)).toBe(75000);
 
-    // Устаревшая версия игнорируется и не перезаписывает amount_paid_kop
+    // Obsolete version is ignored and does not overwrite amount_paid_kop
     const res3 = await postWebhook(ctx.app, {
       ...o,
       amountPaid: 950,
@@ -77,7 +77,7 @@ describe("POST /webhooks/order", () => {
     expect(Number(r3[0].amount_paid_kop)).toBe(75000);
   });
 
-  it("вебхук вычисляет amount_paid_kop из discountPercent", async () => {
+  it("webhook calculates amount_paid_kop from discountPercent", async () => {
     const o = apiOrder({ amount: 500, discountPercent: 20 });
     const res = await postWebhook(ctx.app, o);
     expect(res.statusCode).toBe(200);
@@ -89,7 +89,7 @@ describe("POST /webhooks/order", () => {
     expect(Number(rows[0].amount_paid_kop)).toBe(40000);
   });
 
-  it("вебхук принимает строковые amount и amountPaid", async () => {
+  it("webhook accepts string amount and amountPaid", async () => {
     const o = apiOrder({ amount: "1000.00", amountPaid: "850.50" });
     const res = await postWebhook(ctx.app, o);
     expect(res.statusCode).toBe(200);
@@ -102,7 +102,7 @@ describe("POST /webhooks/order", () => {
     expect(Number(rows[0].amount_paid_kop)).toBe(85050);
   });
 
-  it("amountPaid имеет приоритет над discountPercent в вебхуке", async () => {
+  it("amountPaid takes precedence over discountPercent in webhook", async () => {
     const o = apiOrder({ amount: 1000, amountPaid: 900, discountPercent: 20 });
     const res = await postWebhook(ctx.app, o);
     expect(res.statusCode).toBe(200);
@@ -114,7 +114,7 @@ describe("POST /webhooks/order", () => {
     expect(Number(rows[0].amount_paid_kop)).toBe(90000);
   });
 
-  it("обрабатывает граничные значения скидок (0%, 100%, 0 рублей, строки с пробелами, округление)", async () => {
+  it("handles discount edge cases (0%, 100%, 0 rubles, strings with spaces, rounding)", async () => {
     const zeroDisc = apiOrder({ amount: 1000, discountPercent: 0 });
     await postWebhook(ctx.app, zeroDisc);
 
@@ -143,7 +143,7 @@ describe("POST /webhooks/order", () => {
     expect(byId.get(floatCalc.id)).toBe(425151);
   });
 
-  it("отклоняет заказы с невалидными amountPaid или discountPercent с кодом 400", async () => {
+  it("rejects orders with invalid amountPaid or discountPercent with status 400", async () => {
     const cases = [
       { amountPaid: "invalid" },
       { amountPaid: -10 },

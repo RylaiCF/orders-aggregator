@@ -8,7 +8,7 @@ export class CustomersService {
     private readonly customers: CustomersRepository,
   ) {}
 
-  /** IANA-таймзона клиента. Берётся из внешнего API при первом обращении и хранится в БД. */
+  /** Customer IANA time zone. Retrieved from external API on first access and stored in DB. */
   async timezone(customerId: string): Promise<string> {
     const cached = await this.customers.getTimezone(customerId);
     if (cached) return cached;

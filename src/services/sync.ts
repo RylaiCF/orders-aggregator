@@ -22,7 +22,7 @@ export class SyncService {
     private readonly runs: SyncRunsRepository,
   ) {}
 
-  /** Полный проход по всем страницам. Параллельный запуск получает тот же промис. */
+  /** Full pass over all pages. Concurrent execution shares the same promise. */
   run(): Promise<SyncStats> {
     this.running ??= this.doRun().finally(() => {
       this.running = null;
@@ -50,7 +50,7 @@ export class SyncService {
             stats.invalid++;
           }
         }
-        // API в конце отдаёт не nextCursor: null, а пустую страницу с тем же курсором
+        // The API returns an empty page with the same cursor at the end instead of nextCursor: null
         if (!page.nextCursor || page.items.length === 0 || seen.has(page.nextCursor)) break;
         seen.add(page.nextCursor);
         cursor = page.nextCursor;
