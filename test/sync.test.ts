@@ -23,6 +23,23 @@ describe("POST /sync", () => {
     expect(res.json()).toMatchObject({ received: 3, applied: 1, invalid: 2 });
   });
 
+  it("пропускает невалидные заказы с некорректными скидками или суммами как invalid", async () => {
+    const valid = apiOrder({ amount: 1000, discountPercent: 10 });
+    const badPctLow = apiOrder({ amount: 1000, discountPercent: -5 });
+    const badPctHigh = apiOrder({ amount: 1000, discountPercent: 120 });
+    const badPctStr = apiOrder({ amount: 1000, discountPercent: "bad" });
+    const badPaidNeg = apiOrder({ amount: 1000, amountPaid: -10 });
+    const badPaidExceed = apiOrder({ amount: 1000, amountPaid: 1500 });
+
+    ctx.api.pages.set(null, {
+      items: [valid, badPctLow, badPctHigh, badPctStr, badPaidNeg, badPaidExceed],
+      nextCursor: null,
+    });
+    const res = await ctx.app.inject({ method: "POST", url: "/sync" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ received: 6, applied: 1, invalid: 5 });
+  });
+
   it("не откатывает более свежую версию заказа", async () => {
     const fresh = apiOrder({ status: "refunded", updatedAt: "2026-02-12T00:00:00Z" });
     await ctx.app.inject({ method: "POST", url: "/webhooks/order", payload: fresh });

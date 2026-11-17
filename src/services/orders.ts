@@ -18,6 +18,17 @@ const ExternalOrder = z.object({
 
 export type ApplyResult = "created" | "updated" | "stale";
 
+function parseDiscountPercent(raw: unknown): number {
+  if (typeof raw === "string" && raw.trim() === "") {
+    throw new ValidationError(`invalid discountPercent: ${JSON.stringify(raw)}`);
+  }
+  const value = typeof raw === "string" ? Number(raw.trim()) : raw;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100) {
+    throw new ValidationError(`invalid discountPercent: ${JSON.stringify(raw)}`);
+  }
+  return value;
+}
+
 export class OrdersService {
   constructor(private readonly orders: OrdersRepository) {}
 
@@ -26,15 +37,20 @@ export class OrdersService {
     if (!parsed.success) throw new ValidationError(`invalid order: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
     const o = parsed.data;
     try {
-      const amountKop = toKop(parseRub(o.amount));
+      const amountRub = parseRub(o.amount);
+      const amountKop = toKop(amountRub);
       let amountPaidKop: number;
       if (o.amountPaid !== undefined && o.amountPaid !== null) {
         amountPaidKop = toKop(parseRub(o.amountPaid));
       } else if (o.discountPercent !== undefined && o.discountPercent !== null) {
-        const pct = parseRub(o.discountPercent);
-        amountPaidKop = toKop((parseRub(o.amount) * (100 - pct)) / 100);
+        const pct = parseDiscountPercent(o.discountPercent);
+        amountPaidKop = toKop((amountRub * (100 - pct)) / 100);
       } else {
         amountPaidKop = amountKop;
+      }
+
+      if (amountPaidKop < 0 || amountPaidKop > amountKop) {
+        throw new ValidationError(`amountPaidKop must be between 0 and amountKop (got ${amountPaidKop}, max ${amountKop})`);
       }
 
       return {
@@ -47,6 +63,7 @@ export class OrdersService {
         updatedAt: parseUtc(o.updatedAt),
       };
     } catch (e) {
+      if (e instanceof ValidationError) throw e;
       throw new ValidationError((e as Error).message);
     }
   }

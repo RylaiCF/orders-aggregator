@@ -88,4 +88,75 @@ describe("POST /webhooks/order", () => {
     );
     expect(Number(rows[0].amount_paid_kop)).toBe(40000);
   });
+
+  it("вебхук принимает строковые amount и amountPaid", async () => {
+    const o = apiOrder({ amount: "1000.00", amountPaid: "850.50" });
+    const res = await postWebhook(ctx.app, o);
+    expect(res.statusCode).toBe(200);
+
+    const { rows } = await ctx.db.query<{ amount_kop: string; amount_paid_kop: string }>(
+      `SELECT amount_kop, amount_paid_kop FROM orders WHERE id = $1`,
+      [o.id],
+    );
+    expect(Number(rows[0].amount_kop)).toBe(100000);
+    expect(Number(rows[0].amount_paid_kop)).toBe(85050);
+  });
+
+  it("amountPaid имеет приоритет над discountPercent в вебхуке", async () => {
+    const o = apiOrder({ amount: 1000, amountPaid: 900, discountPercent: 20 });
+    const res = await postWebhook(ctx.app, o);
+    expect(res.statusCode).toBe(200);
+
+    const { rows } = await ctx.db.query<{ amount_paid_kop: string }>(
+      `SELECT amount_paid_kop FROM orders WHERE id = $1`,
+      [o.id],
+    );
+    expect(Number(rows[0].amount_paid_kop)).toBe(90000);
+  });
+
+  it("обрабатывает граничные значения скидок (0%, 100%, 0 рублей, строки с пробелами, округление)", async () => {
+    const zeroDisc = apiOrder({ amount: 1000, discountPercent: 0 });
+    await postWebhook(ctx.app, zeroDisc);
+
+    const fullDisc = apiOrder({ amount: 1000, discountPercent: 100 });
+    await postWebhook(ctx.app, fullDisc);
+
+    const zeroPaid = apiOrder({ amount: 1000, amountPaid: 0 });
+    await postWebhook(ctx.app, zeroPaid);
+
+    const strWithSpaces = apiOrder({ amount: 1000, amountPaid: " 500.50 " });
+    await postWebhook(ctx.app, strWithSpaces);
+
+    const floatCalc = apiOrder({ amount: "4723.90", discountPercent: 10 });
+    await postWebhook(ctx.app, floatCalc);
+
+    const { rows } = await ctx.db.query<{ id: string; amount_paid_kop: string }>(
+      `SELECT id, amount_paid_kop FROM orders WHERE id = ANY($1)`,
+      [[zeroDisc.id, fullDisc.id, zeroPaid.id, strWithSpaces.id, floatCalc.id]],
+    );
+    const byId = new Map(rows.map((r) => [r.id, Number(r.amount_paid_kop)]));
+
+    expect(byId.get(zeroDisc.id)).toBe(100000);
+    expect(byId.get(fullDisc.id)).toBe(0);
+    expect(byId.get(zeroPaid.id)).toBe(0);
+    expect(byId.get(strWithSpaces.id)).toBe(50050);
+    expect(byId.get(floatCalc.id)).toBe(425151);
+  });
+
+  it("отклоняет заказы с невалидными amountPaid или discountPercent с кодом 400", async () => {
+    const cases = [
+      { amountPaid: "invalid" },
+      { amountPaid: -10 },
+      { amountPaid: 1500, amount: 1000 },
+      { discountPercent: "bad" },
+      { discountPercent: -5 },
+      { discountPercent: 105 },
+      { discountPercent: "" },
+      { discountPercent: "   " },
+    ];
+    for (const c of cases) {
+      const res = await postWebhook(ctx.app, apiOrder(c));
+      expect(res.statusCode).toBe(400);
+    }
+  });
 });
