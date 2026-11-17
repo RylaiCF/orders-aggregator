@@ -5,9 +5,9 @@ Conversion of monetary amounts from external decimal rubles into internal intege
 
 **Blocked by:** 01: Fix Per-Order Local Timezone Date Resolution (DST Bug)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] `toKop` converts `4723.9` to exactly `472390` kopecks without precision loss.
-- [ ] `toKop` converts `10.999` to `1099` kopecks, correctly discarding fractional kopecks.
-- [ ] `fromKop` converts `472390` kopecks to `4723.9` rubles.
-- [ ] Unit tests in `money.test.ts` pass and cover known floating-point edge cases.
+- [x] `toKop` converts `4723.9` to exactly `472390` kopecks without precision loss.
+- [x] `toKop` converts `10.999` to `1099` kopecks, correctly discarding fractional kopecks.
+- [x] `fromKop` converts `472390` kopecks to `4723.9` rubles.
+- [x] Unit tests in `money.test.ts` pass and cover known floating-point edge cases.

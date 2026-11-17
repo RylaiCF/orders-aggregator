@@ -5,12 +5,12 @@ Clean environment verification of the full assignment workflow: database reset, 
 
 **Blocked by:** 04: Expose Discounts in Daily Totals API
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Environment cleanly restarts with `docker compose down -v && docker compose up -d`.
-- [ ] Migrations run cleanly via `npm run migrate`.
-- [ ] `POST /sync` executes to completion across all pages.
-- [ ] Upstream webhooks run via `docker compose run --rm orders-api webhooks --target http://host.docker.internal:3000/webhooks/order` and complete with 200 responses.
-- [ ] `GET /customers/c_7/daily-totals?from=2026-03-27&to=2026-03-31` is queried and saved to `result.json` in the project root.
-- [ ] `SOLUTION.md` is authored, explaining all decisions, DST root cause, edge cases, and future improvements per `TASK.md`.
-- [ ] All test suites pass (`npm test`) and type checking passes (`npm run typecheck`).
+- [x] Environment cleanly restarts with `docker compose down -v && docker compose up -d`.
+- [x] Migrations run cleanly via `npm run migrate`.
+- [x] `POST /sync` executes to completion across all pages.
+- [x] Upstream webhooks run via `docker compose run --rm orders-api webhooks --target http://host.docker.internal:3000/webhooks/order` and complete with 200 responses.
+- [x] `GET /customers/c_7/daily-totals?from=2026-03-27&to=2026-03-31` is queried and saved to `result.json` in the project root.
+- [x] `SOLUTION.md` is authored, explaining all decisions, DST root cause, edge cases, and future improvements per `TASK.md`.
+- [x] All test suites pass (`npm test`) and type checking passes (`npm run typecheck`).

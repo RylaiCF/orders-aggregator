@@ -5,10 +5,10 @@ Orders endpoint reflects accurate calendar days in customer local timezones acro
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Customer order days are resolved per-order using each order's `createdAt` timestamp in the customer's IANA timezone.
-- [ ] Orders created at 22:30 UTC on March 28, 2026 for `Europe/Berlin` bucket into 2026-03-28.
-- [ ] Orders created at 22:30 UTC on March 29, 2026 for `Europe/Berlin` bucket into 2026-03-30 following the +2h DST transition.
-- [ ] Querying `GET /customers/c_7/daily-totals?from=2026-03-27&to=2026-03-31` produces correct order grouping for each day.
-- [ ] Existing test suites pass and new DST-specific unit/integration tests pass.
+- [x] Customer order days are resolved per-order using each order's `createdAt` timestamp in the customer's IANA timezone.
+- [x] Orders created at 22:30 UTC on March 28, 2026 for `Europe/Berlin` bucket into 2026-03-28.
+- [x] Orders created at 22:30 UTC on March 29, 2026 for `Europe/Berlin` bucket into 2026-03-30 following the +2h DST transition.
+- [x] Querying `GET /customers/c_7/daily-totals?from=2026-03-27&to=2026-03-31` produces correct order grouping for each day.
+- [x] Existing test suites pass and new DST-specific unit/integration tests pass.

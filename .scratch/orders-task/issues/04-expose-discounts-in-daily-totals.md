@@ -5,12 +5,12 @@ The customer daily statistics endpoint (`GET /customers/:id/daily-totals`) repor
 
 **Blocked by:** 03: Persist Paid Amount in Database Schema and Order Ingestion
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] `GET /customers/:id/daily-totals` returns an array of `{ date, total, gross, discount, net }`.
-- [ ] `total === gross` holds true for every day in the response.
-- [ ] `discount === gross - net` holds true to the kopeck without floating-point artifacts.
-- [ ] Days with no paid orders return `{ date, total: 0, gross: 0, discount: 0, net: 0 }`.
-- [ ] Non-paid orders (`pending`, `refunded`) are excluded from all totals.
-- [ ] Existing tests in `totals.test.ts` updated to expect the new response shape and pass.
-- [ ] New integration tests verify discount calculations across multiple orders.
+- [x] `GET /customers/:id/daily-totals` returns an array of `{ date, total, gross, discount, net }`.
+- [x] `total === gross` holds true for every day in the response.
+- [x] `discount === gross - net` holds true to the kopeck without floating-point artifacts.
+- [x] Days with no paid orders return `{ date, total: 0, gross: 0, discount: 0, net: 0 }`.
+- [x] Non-paid orders (`pending`, `refunded`) are excluded from all totals.
+- [x] Existing tests in `totals.test.ts` updated to expect the new response shape and pass.
+- [x] New integration tests verify discount calculations across multiple orders.
