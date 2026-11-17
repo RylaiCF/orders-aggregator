@@ -13,7 +13,7 @@ export function parseRub(raw: unknown): number {
 
 /** Рубли → копейки. Доли копейки отбрасываются: деньги клиенту не досчитываем. */
 export function toKop(rub: number): number {
-  return Math.floor(rub * 100);
+  return Math.floor(Math.round(rub * 1000) / 10);
 }
 
 /** Копейки → рубли для ответа API. */
