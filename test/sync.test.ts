@@ -42,4 +42,41 @@ describe("POST /sync", () => {
     expect(Number(rows[0].amount_kop)).toBe(250000);
     expect(rows[0].created_at.toISOString()).toBe("2026-02-10T21:30:00.000Z");
   });
+
+  it("синхронизирует заказы со скидками (amountPaid, discountPercent, legacy без скидок)", async () => {
+    const o1 = apiOrder({ amount: 1000, amountPaid: 850 });
+    const o2 = apiOrder({ amount: "2000.00", discountPercent: "15" });
+    const o3 = apiOrder({ amount: 500 });
+    const o4 = apiOrder({ amount: "4723.90", amountPaid: "4000.00" });
+    const o5 = apiOrder({ amount: 100, amountPaid: 0 });
+    const o6 = apiOrder({ amount: 1000, amountPaid: 800, discountPercent: 10 });
+
+    ctx.api.pages.set(null, { items: [o1, o2, o3, o4, o5, o6], nextCursor: null });
+    const res = await ctx.app.inject({ method: "POST", url: "/sync" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ received: 6, applied: 6, invalid: 0 });
+
+    const { rows } = await ctx.db.query<{ id: string; amount_kop: string; amount_paid_kop: string }>(
+      `SELECT id, amount_kop, amount_paid_kop FROM orders ORDER BY id`,
+    );
+    const byId = new Map(rows.map((r) => [r.id, r]));
+
+    expect(Number(byId.get(o1.id)!.amount_kop)).toBe(100000);
+    expect(Number(byId.get(o1.id)!.amount_paid_kop)).toBe(85000);
+
+    expect(Number(byId.get(o2.id)!.amount_kop)).toBe(200000);
+    expect(Number(byId.get(o2.id)!.amount_paid_kop)).toBe(170000);
+
+    expect(Number(byId.get(o3.id)!.amount_kop)).toBe(50000);
+    expect(Number(byId.get(o3.id)!.amount_paid_kop)).toBe(50000);
+
+    expect(Number(byId.get(o4.id)!.amount_kop)).toBe(472390);
+    expect(Number(byId.get(o4.id)!.amount_paid_kop)).toBe(400000);
+
+    expect(Number(byId.get(o5.id)!.amount_kop)).toBe(10000);
+    expect(Number(byId.get(o5.id)!.amount_paid_kop)).toBe(0);
+
+    expect(Number(byId.get(o6.id)!.amount_kop)).toBe(100000);
+    expect(Number(byId.get(o6.id)!.amount_paid_kop)).toBe(80000);
+  });
 });
